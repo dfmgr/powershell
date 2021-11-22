@@ -1,12 +1,11 @@
 #!pwsh
 Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope CurrentUser
 Install-Module -Name PowerShellGet -AllowPrerelease -Force
-Install-Module -Name PackageManagement
-Install-Module -Name oh-my-posh
-Install-Module -Name posh-git
-Install-Module -Name posh-sshell
-Install-Module -Name Posh-ACME
-Install-Module -Name posh-alias
-Install-Module -Name PoshNotify
-Install-Module -Name PoshHosts
-
+Install-Module -Name PackageManagement -Force
+Install-Module -Name oh-my-posh -Force
+Install-Module -Name posh-git -Force
+Install-Module -Name posh-sshell -Force
+Install-Module -Name Posh-ACME -Force
+Install-Module -Name posh-alias -Force
+Install-Module -Name PoshNotify -Force
+Install-Module -Name PoshHosts -Force
