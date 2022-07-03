@@ -13,12 +13,14 @@ Set-PSReadlineOption -Color @{
 }
 
 # Import modules
-Import-Module oh-my-posh
+oh-my-posh init pwsh --config ~/.config/powershell/theme.json | Invoke-Expression
 Import-Module posh-git
 Import-Module posh-sshell
 
+# set ENV
+$env:POSH_GIT_ENABLED = $true
+
 # Set theme
-Set-PoshPrompt -Theme ~/.config/powershell/theme.json
 
 # Autocomplete
 Register-ArgumentCompleter -Native -CommandName winget -ScriptBlock {
@@ -37,6 +39,7 @@ $GitPromptSettings.DefaultPromptPrefix.ForegroundColor = [ConsoleColor]::Green
 $GitPromptSettings.DefaultPromptPath.ForegroundColor =[ConsoleColor]::Cyan
 $GitPromptSettings.DefaultPromptSuffix.Text = "$([char]0x203A) " # chevron unicode symbol
 $GitPromptSettings.DefaultPromptSuffix.ForegroundColor = [ConsoleColor]::Magenta
+
 # Dracula Git Status Configuration
 $GitPromptSettings.BeforeStatus.ForegroundColor = [ConsoleColor]::Blue
 $GitPromptSettings.BranchColor.ForegroundColor = [ConsoleColor]::Blue
