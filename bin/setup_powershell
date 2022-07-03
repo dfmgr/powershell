@@ -100,7 +100,6 @@ EOF
   }
   # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   extract() {
-    set -x
     local -a args="$*"
     builtin cd "$POWERSHELL_TEMP_DIR" || exit 1
     for arg in $args; do
