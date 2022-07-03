@@ -149,6 +149,9 @@ fi
 # run post install scripts
 run_postinst() {
   dfmgr_run_post
+  if [[ -f "$INSTDIR/bin/setup_powershell" ]] && [[ -z "$(command -v pwsh 2>/dev/null)" ]]; then
+    eval "$INSTDIR/bin/setup_powershell"
+  fi
 }
 #
 execute "run_postinst" "Running post install scripts"
