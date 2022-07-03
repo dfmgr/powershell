@@ -8,10 +8,10 @@
 # @Copyright     : Copyright: (c) 2022 Jason Hempstead, Casjays Developments
 # @Created       : Sunday, Jul 03, 2022 12:12 EDT
 # @File          : powershell
-# @Description   : 
-# @TODO          : 
-# @Other         : 
-# @Resource      : 
+# @Description   :
+# @TODO          :
+# @Other         :
+# @Resource      :
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 powershell_main() {
   PROG="$(basename "$0" 2>/dev/null)"
@@ -63,6 +63,9 @@ powershell_main() {
       cp -Rf "$POWERSHELL_CONFIG_DIR/$POWERSHELL_CONFIG_FILE" "$POWERSHELL_CONFIG_BACKUP_DIR/$POWERSHELL_CONFIG_FILE.$$"
     cat <<EOF >"$POWERSHELL_CONFIG_DIR/$POWERSHELL_CONFIG_FILE"
 # Settings for powershell
+POWER_SHELL_BIN_DIR="${POWER_SHELL_BIN_DIR:-$HOME/.local/bin}"
+POWER_SHELL_INSTALL_DIR="${POWER_SHELL_INSTALL_DIR:-$HOME/.local/share/powershell}"
+POWERSHELL_LATEST_URL="${POWERSHELL_LATEST_URL:-https://api.github.com/repos/PowerShell/PowerShell/releases/latest}"
 
 # Notification settings
 POWERSHELL_GOOD_MESSAGE="${POWERSHELL_GOOD_MESSAGE:-Everything Went OK}"
@@ -87,7 +90,42 @@ EOF
   }
   # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   # Additional functions
-
+  get_releases() {
+    curl -q -LSsf -H "Accept: application/vnd.github+json" "$POWERSHELL_LATEST_URL" 2>/dev/null |
+      jq -r '.assets[].browser_download_url' 2>/dev/null |
+      grep -v 'fxdependent' |
+      grep "$os-$arch" |
+      grep -E '.tar.gz|.zip' |
+      head -n1 | grep '^' || echo ''
+  }
+  # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  extract() {
+    set -x
+    local -a args="$*"
+    builtin cd "$POWERSHELL_TEMP_DIR" || exit 1
+    for arg in $args; do
+      if [ -f "$arg" ]; then
+        case "$arg" in
+        *.tar.bz2) tar xjf "$arg" ;;
+        *.tar.gz) tar xzf "$arg" ;;
+        *.tar.xz) tar xzf "$arg" ;;
+        *.bz2) bunzip2 "$arg" ;;
+        *.gz) gunzip "$arg" ;;
+        *.tar) tar xf "$arg" ;;
+        *.tbz2) tar xjf "$arg" ;;
+        *.tgz) tar xzf "$arg" ;;
+        *.zip) unzip "$arg" ;;
+        *.Z) uncompress "$arg" ;;
+        *.rar) rar x "$arg" ;;    # 'rar' must to be installed
+        *.jar) jar -xvf "$arg" ;; # 'jdk' must to be installed
+        *) shift ;;
+        esac
+      else
+        echo "'$arg' is not a valid file"
+      fi
+    done
+    return $?
+  }
   # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   # Defaults
   local exitCode=
@@ -110,7 +148,9 @@ EOF
   local POWERSHELL_OUTPUT_COLOR_ERROR="${POWERSHELL_OUTPUT_COLOR_ERROR:-1}"
   # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   # Enviroment overrides
-
+  local POWERSHELL_LATEST_URL="${POWERSHELL_LATEST_URL:-https://api.github.com/repos/PowerShell/PowerShell/releases/latest}"
+  local POWER_SHELL_INSTALL_DIR="${POWER_SHELL_INSTALL_DIR:-$HOME/.local/share/powershell}"
+  local POWER_SHELL_BIN_DIR="${POWER_SHELL_BIN_DIR:-$HOME/.local/bin}"
   # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   # Generate config files
   [ -f "$POWERSHELL_CONFIG_DIR/$POWERSHELL_CONFIG_FILE" ] || [[ "$*" = *config ]] || INIT_CONFIG="${INIT_CONFIG:-TRUE}" __gen_config ${SETARGS:-$@}
@@ -196,14 +236,74 @@ EOF
   #am_i_online --error || exit 1     # exit 1 if no internet
   # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   # APP Variables overrides
-
+  os="$(uname -s | tr '[:upper:]' '[:lower:]')"
+  arch="$(uname -m | tr '[:upper:]' '[:lower:]')"
+  if [[ "$arch" = *86_64* ]] || [[ "$arch" = amd64 ]]; then
+    arch="x64"
+  elif [[ "$arch" = aarch64 ]]; then
+    arch="arm64"
+  elif [[ "$arch" = arm* ]]; then
+    arch="arm32"
+  elif [[ "$OSTYPE" = i?86 ]]; then
+    arch="x86"
+  else
+    exit 1
+  fi
+  if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+    os=linux
+  elif [[ "$OSTYPE" == "darwin"* ]]; then
+    os=osx
+  elif [[ "$OSTYPE" = msys* ]] || [ "$OSTYPE" = "windowsnt" ]; then
+    os=win
+  else
+    exit 1
+  fi
+  # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  POWERSHELL_LATEST_URL="$(get_releases)"
+  POWERSHELL_LATEST_URL_FILE="$(basename "$POWERSHELL_LATEST_URL")"
+  POWERSHELL_LATEST_RELEASE_FILE="$TMP/$(basename "$POWERSHELL_LATEST_URL")"
   # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   # Actions based on env
-
+  [[ -e "$POWER_SHELL_INSTALL_DIR/pwsh" ]] && rm -Rf "$POWER_SHELL_BIN_DIR/pwsh"
+  [[ -e "$POWER_SHELL_INSTALL_DIR/powershell" ]] && rm -Rf "$POWER_SHELL_BIN_DIR/powershell"
+  [[ -e "$POWERSHELL_LATEST_RELEASE_FILE" ]] && rm -Rf "$POWERSHELL_LATEST_RELEASE_FILE"
   # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   # begin main app
-  printf_green "Version:$VERSION DIR=$POWERSHELL_CONFIG_DIR"
+  if [[ -n "$POWERSHELL_LATEST_URL" ]]; then
+    printf_cyan "Downloading $POWERSHELL_LATEST_URL_FILE"
+    curl -q -LSsf -o "$POWERSHELL_LATEST_RELEASE_FILE" "$POWERSHELL_LATEST_URL" 2>/dev/null
+  else
+    printf_red "Failed to download from:"
+    printf_exit "$POWERSHELL_LATEST_URL"
+  fi
 
+  # extract archive
+  extract "$POWERSHELL_LATEST_RELEASE_FILE"
+
+  # install
+  if [[ -d "$POWERSHELL_TEMP_DIR" ]] && [[ -f "$POWERSHELL_TEMP_DIR/pwsh" ]]; then
+    rsync -avhP "$POWERSHELL_TEMP_DIR/" "$POWER_SHELL_INSTALL_DIR/" --delete &>/dev/null
+    ln -sf "$POWER_SHELL_INSTALL_DIR/pwsh" "$POWER_SHELL_BIN_DIR/pwsh" &>/dev/null
+    ln -sf "$POWER_SHELL_INSTALL_DIR/pwsh" "$POWER_SHELL_BIN_DIR/powershell" &>/dev/null
+    if [[ -d "$POWER_SHELL_INSTALL_DIR" ]] && [[ -f "$POWER_SHELL_BIN_DIR/pwsh" ]]; then
+      printf_cyan "Cleaning up: $POWERSHELL_TEMP_DIR $POWERSHELL_LATEST_RELEASE_FILE"
+      rm -Rf" $POWERSHELL_TEMP_DIR" "$POWERSHELL_LATEST_RELEASE_FILE" &>/dev/null
+      printf_green "[ ✔ ] Success! Saved to: $POWER_SHELL_INSTALL_DIR"
+    fi
+    if [[ -f "$POWER_SHELL_BIN_DIR/pwsh" ]] && [[ -f "$HOME/.config/powershell/Microsoft.PowerShell_profile.ps1" ]]; then
+      if [[ "$os" = win ]]; then
+        command -v winget &>/dev/null && winget install JanDeDobbeleer.OhMyPosh -s winget
+      elif [[ "$os" = mac ]]; then
+        command -v brew &>/dev/null && brew install jandedobbeleer/oh-my-posh/oh-my-posh
+      elif [[ "$os" = linux ]]; then
+        install_posh="$(curl -q -LSsf -H "Accept: application/vnd.github+json" https://api.github.com/repos/JanDeDobbeleer/oh-my-posh/releases/latest | jq -r '.assets[].browser_download_url' | grep "$os-$arch$" || echo'')"
+        [[ -n "$install_posh" ]] && curl -q -LSsf "$install_posh" -o "$HOME/.local/bin/oh-my-posh"
+        [[ -f "$HOME/.local/bin/oh-my-posh" ]] && chmod +x "$HOME/.local/bin/oh-my-posh"
+      fi
+    fi
+  else
+    printf_exit "Well something went wrong"
+  fi
   # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   # lets exit with code
   return ${exitCode:-$?}
