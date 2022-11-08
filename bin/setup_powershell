@@ -22,7 +22,7 @@ powershell_main() {
   SRC_DIR="${BASH_SOURCE%/*}"
   # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   # Set bash options
-  if [[ "$1" == "--debug" ]]; then shift 1 && set -xo pipefail && export SCRIPT_OPTS="--debug" && export _DEBUG="on"; fi
+  if [ "$1" == "--debug" ]; then shift 1 && set -xo pipefail && export SCRIPT_OPTS="--debug" && export _DEBUG="on"; fi
 
   # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   # Main function file
@@ -81,7 +81,7 @@ POWERSHELL_OUTPUT_COLOR_ERROR="${POWERSHELL_OUTPUT_COLOR_ERROR:-1}"
 
 EOF
     if [ -f "$POWERSHELL_CONFIG_DIR/$POWERSHELL_CONFIG_FILE" ]; then
-      [[ "$INIT_CONFIG" = "TRUE" ]] || printf_green "Your config file for $APPNAME has been created"
+      [ "$INIT_CONFIG" = "TRUE" ] || printf_green "Your config file for $APPNAME has been created"
       true
     else
       printf_red "Failed to create the config file"
@@ -191,7 +191,7 @@ EOF
   local ARRAY=""
   # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   # Setup application options
-  local setopts=$(getopt -o "$SHORTOPTS" --long "$LONGOPTS" -a -n "$(basename "$0" 2>/dev/null)" -- "$@" 2>/dev/null)
+  local setopts=$(getopt -o "$SHORTOPTS" --long "$LONGOPTS" -n "$PROG" -- "$@" 2>/dev/null)
   eval set -- "${setopts[@]}" 2>/dev/null
   while :; do
     case "$1" in
@@ -237,9 +237,9 @@ EOF
   # APP Variables overrides
   os="$(uname -s | tr '[:upper:]' '[:lower:]')"
   arch="$(uname -m | tr '[:upper:]' '[:lower:]')"
-  if [[ "$arch" = *86_64* ]] || [[ "$arch" = amd64 ]]; then
+  if [[ "$arch" = *86_64* ]] || [ "$arch" = amd64 ]; then
     arch="x64"
-  elif [[ "$arch" = aarch64 ]]; then
+  elif [ "$arch" = aarch64 ]; then
     arch="arm64"
   elif [[ "$arch" = arm* ]]; then
     arch="arm32"
@@ -248,11 +248,11 @@ EOF
   else
     exit 1
   fi
-  if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+  if [ "$os" = linux ]; then
     os=linux
-  elif [[ "$OSTYPE" == "darwin"* ]]; then
+  elif [ "$os" = darwin ]; then
     os=osx
-  elif [[ "$OSTYPE" = msys* ]] || [ "$OSTYPE" = "windowsnt" ]; then
+  elif [ "$os" = msys ] || [ "$os" = windowsnt ]; then
     os=win
   else
     exit 1
@@ -263,12 +263,12 @@ EOF
   POWERSHELL_LATEST_RELEASE_FILE="$TMP/$(basename "$POWERSHELL_LATEST_URL")"
   # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   # Actions based on env
-  [[ -e "$POWER_SHELL_INSTALL_DIR/pwsh" ]] && rm -Rf "$POWER_SHELL_BIN_DIR/pwsh"
-  [[ -e "$POWER_SHELL_INSTALL_DIR/powershell" ]] && rm -Rf "$POWER_SHELL_BIN_DIR/powershell"
-  [[ -e "$POWERSHELL_LATEST_RELEASE_FILE" ]] && rm -Rf "$POWERSHELL_LATEST_RELEASE_FILE"
+  [ -e "$POWER_SHELL_INSTALL_DIR/pwsh" ] && rm -Rf "$POWER_SHELL_BIN_DIR/pwsh"
+  [ -e "$POWER_SHELL_INSTALL_DIR/powershell" ] && rm -Rf "$POWER_SHELL_BIN_DIR/powershell"
+  [ -e "$POWERSHELL_LATEST_RELEASE_FILE" ] && rm -Rf "$POWERSHELL_LATEST_RELEASE_FILE"
   # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   # begin main app
-  if [[ -n "$POWERSHELL_LATEST_URL" ]]; then
+  if [ -n "$POWERSHELL_LATEST_URL" ]; then
     printf_cyan "Downloading $POWERSHELL_LATEST_URL_FILE"
     curl -q -LSsf -o "$POWERSHELL_LATEST_RELEASE_FILE" "$POWERSHELL_LATEST_URL" 2>/dev/null
   else
@@ -280,28 +280,47 @@ EOF
   extract "$POWERSHELL_LATEST_RELEASE_FILE"
 
   # install
-  if [[ -d "$POWERSHELL_TEMP_DIR" ]] && [[ -f "$POWERSHELL_TEMP_DIR/pwsh" ]]; then
+  if [ -d "$POWERSHELL_TEMP_DIR" ] && [ -f "$POWERSHELL_TEMP_DIR/pwsh" ]; then
     rsync -avhP "$POWERSHELL_TEMP_DIR/" "$POWER_SHELL_INSTALL_DIR/" --delete &>/dev/null
-    ln -sf "$POWER_SHELL_INSTALL_DIR/pwsh" "$POWER_SHELL_BIN_DIR/pwsh" &>/dev/null
-    ln -sf "$POWER_SHELL_INSTALL_DIR/pwsh" "$POWER_SHELL_BIN_DIR/powershell" &>/dev/null
-    if [[ -d "$POWER_SHELL_INSTALL_DIR" ]] && [[ -f "$POWER_SHELL_BIN_DIR/pwsh" ]]; then
+    [ -L "$POWER_SHELL_BIN_DIR/pwsh" ] && unlink "$POWER_SHELL_BIN_DIR/pwsh"
+    [ -L "$POWER_SHELL_BIN_DIR/powershell" ] && unlink "$POWER_SHELL_BIN_DIR/powershell"
+    printf '#!/usr/bin/env sh\n\n%s\n' "exec $POWER_SHELL_INSTALL_DIR/pwsh" >"$POWER_SHELL_BIN_DIR/pwsh"
+    printf '#!/usr/bin/env sh\n\n%s\n' "exec $POWER_SHELL_INSTALL_DIR/pwsh" >"$POWER_SHELL_BIN_DIR/powershell"
+    chmod -Rf 755 "$POWER_SHELL_BIN_DIR/pwsh" "$POWER_SHELL_BIN_DIR/poweshell"
+    if [ -d "$POWER_SHELL_INSTALL_DIR" ] && [ -f "$POWER_SHELL_BIN_DIR/pwsh" ]; then
+      printf_green "Successfully saved powershell to: $POWER_SHELL_INSTALL_DIR"
       printf_cyan "Cleaning up: $POWERSHELL_TEMP_DIR $POWERSHELL_LATEST_RELEASE_FILE"
       rm -Rf" $POWERSHELL_TEMP_DIR" "$POWERSHELL_LATEST_RELEASE_FILE" &>/dev/null
-      printf_green "[ ✔ ] Success! Saved to: $POWER_SHELL_INSTALL_DIR"
     fi
-    if [[ -f "$POWER_SHELL_BIN_DIR/pwsh" ]] && [[ -f "$HOME/.config/powershell/Microsoft.PowerShell_profile.ps1" ]]; then
-      if [[ "$os" = win ]]; then
+    if [ -f "$POWER_SHELL_BIN_DIR/pwsh" ]; then
+      if [ "$os" = win ]; then
         command -v winget &>/dev/null && winget install JanDeDobbeleer.OhMyPosh -s winget
-      elif [[ "$os" = mac ]]; then
+      elif [ "$os" = mac ]; then
         command -v brew &>/dev/null && brew install jandedobbeleer/oh-my-posh/oh-my-posh
-      elif [[ "$os" = linux ]]; then
+      elif [ "$os" = linux ]; then
+        # if [ -n "$(builtin type -P latest-releases)" ]; then
+        #   latest-releases install JanDeDobbeleer/oh-my-posh
+        # else
         install_posh="$(curl -q -LSsf -H "Accept: application/vnd.github+json" https://api.github.com/repos/JanDeDobbeleer/oh-my-posh/releases/latest | jq -r '.assets[].browser_download_url' | grep "$os-$arch$" || echo'')"
-        [[ -n "$install_posh" ]] && curl -q -LSsf "$install_posh" -o "$HOME/.local/bin/oh-my-posh"
-        [[ -f "$HOME/.local/bin/oh-my-posh" ]] && chmod +x "$HOME/.local/bin/oh-my-posh"
+        if [ -n "$install_posh" ]; then
+          printf_cyan "Installing oh-my-posh"
+          curl -q -LSsf "$install_posh" -o "$HOME/.local/bin/oh-my-posh"
+          if [ -f "$HOME/.local/bin/oh-my-posh" ]; then
+            chmod +x "$HOME/.local/bin/oh-my-posh"
+            printf_green "Successfully saved oh-my-posh to: ~/.local/bin/oh-my-posh"
+          fi
+        fi
+        # fi
       fi
+      printf_cyan "Initializing powershell modules"
+      [ -f "$HOME/.config/powershell/Microsoft.PowerShell_profile.ps1" ] && mv -f "$HOME/.config/powershell/Microsoft.PowerShell_profile.ps1" "$HOME/.config/powershell/Microsoft.PowerShell_profile.bak"
+      $POWER_SHELL_INSTALL_DIR/pwsh -Command $HOME/.config/powershell/init.ps1 2>/dev/null
+      [ -f "$HOME/.config/powershell/Microsoft.PowerShell_profile.bak" ] && mv -f "$HOME/.config/powershell/Microsoft.PowerShell_profile.bak" "$HOME/.config/powershell/Microsoft.PowerShell_profile.ps1"
     fi
+    exitCode=0
   else
-    printf_exit "Well something went wrong"
+    printf_red "Well something went wrong"
+    exitCode=1
   fi
   # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   # lets exit with code
