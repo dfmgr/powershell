@@ -286,7 +286,7 @@ EOF
     [ -L "$POWER_SHELL_BIN_DIR/powershell" ] && unlink "$POWER_SHELL_BIN_DIR/powershell"
     printf '#!/usr/bin/env sh\n\n%s\n' "exec $POWER_SHELL_INSTALL_DIR/pwsh" >"$POWER_SHELL_BIN_DIR/pwsh"
     printf '#!/usr/bin/env sh\n\n%s\n' "exec $POWER_SHELL_INSTALL_DIR/pwsh" >"$POWER_SHELL_BIN_DIR/powershell"
-    chmod -Rf 755 "$POWER_SHELL_BIN_DIR/pwsh" "$POWER_SHELL_BIN_DIR/poweshell"
+    chmod -Rf 755 "$POWER_SHELL_BIN_DIR/pwsh" "$POWER_SHELL_BIN_DIR/powershell"
     if [ -d "$POWER_SHELL_INSTALL_DIR" ] && [ -f "$POWER_SHELL_BIN_DIR/pwsh" ]; then
       printf_green "Successfully saved powershell to: $POWER_SHELL_INSTALL_DIR"
       printf_cyan "Cleaning up: $POWERSHELL_TEMP_DIR $POWERSHELL_LATEST_RELEASE_FILE"
@@ -298,9 +298,6 @@ EOF
       elif [ "$os" = mac ]; then
         command -v brew &>/dev/null && brew install jandedobbeleer/oh-my-posh/oh-my-posh
       elif [ "$os" = linux ]; then
-        # if [ -n "$(builtin type -P latest-releases)" ]; then
-        #   latest-releases install JanDeDobbeleer/oh-my-posh
-        # else
         install_posh="$(curl -q -LSsf -H "Accept: application/vnd.github+json" https://api.github.com/repos/JanDeDobbeleer/oh-my-posh/releases/latest | jq -r '.assets[].browser_download_url' | grep "$os-$arch$" || echo'')"
         if [ -n "$install_posh" ]; then
           printf_cyan "Installing oh-my-posh"
@@ -314,7 +311,7 @@ EOF
       fi
       printf_cyan "Initializing powershell modules"
       [ -f "$HOME/.config/powershell/Microsoft.PowerShell_profile.ps1" ] && mv -f "$HOME/.config/powershell/Microsoft.PowerShell_profile.ps1" "$HOME/.config/powershell/Microsoft.PowerShell_profile.bak"
-      $POWER_SHELL_INSTALL_DIR/pwsh -Command $HOME/.config/powershell/init.ps1 2>/dev/null
+      [ -f "$HOME/.config/powershell/init.ps1" ] && $POWER_SHELL_INSTALL_DIR/pwsh -Command "$HOME/.config/powershell/init.ps1" 2>/dev/null
       [ -f "$HOME/.config/powershell/Microsoft.PowerShell_profile.bak" ] && mv -f "$HOME/.config/powershell/Microsoft.PowerShell_profile.bak" "$HOME/.config/powershell/Microsoft.PowerShell_profile.ps1"
     fi
     exitCode=0
