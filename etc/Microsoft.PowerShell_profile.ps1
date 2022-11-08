@@ -129,7 +129,7 @@ Set-PSReadlineOption -Color @{
     "Parameter" = [ConsoleColor]::Gray
     "Operator" = [ConsoleColor]::Magenta
     "Variable" = [ConsoleColor]::White
-    "String" = [ConsoleColor]::Yellow
+    "String" = [ConsoleColor]::Cyan
     "Number" = [ConsoleColor]::Blue
     "Type" = [ConsoleColor]::Cyan
     "Comment" = [ConsoleColor]::DarkCyan
