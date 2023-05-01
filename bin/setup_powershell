@@ -1,333 +1,191 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
+# shellcheck shell=sh
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version       : 202207031212-git
-# @Author        : Jason Hempstead
-# @Contact       : jason@casjaysdev.com
-# @License       : LICENSE.md
-# @ReadME        : powershell --help
-# @Copyright     : Copyright: (c) 2022 Jason Hempstead, Casjays Developments
-# @Created       : Sunday, Jul 03, 2022 12:12 EDT
-# @File          : powershell
-# @Description   :
-# @TODO          :
-# @Other         :
-# @Resource      :
+##@Version           :  202305011152-git
+# @@Author           :  Jason Hempstead
+# @@Contact          :  jason@casjaysdev.com
+# @@License          :  WTFPL
+# @@ReadME           :  setup_powershell --help
+# @@Copyright        :  Copyright: (c) 2023 Jason Hempstead, Casjays Developments
+# @@Created          :  Monday, May 01, 2023 11:52 EDT
+# @@File             :  setup_powershell
+# @@Description      :
+# @@Changelog        :  New script
+# @@TODO             :  Better documentation
+# @@Other            :
+# @@Resource         :
+# @@Terminal App     :  no
+# @@sudo/root        :  no
+# @@Template         :  shell/sh
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-powershell_main() {
-  PROG="$(basename "$0" 2>/dev/null)"
-  VERSION="202207031212-git"
-  RUN_USER="${SUDO_USER:-${USER}}"
-  USER="${SUDO_USER:-${USER}}"
-  HOME="${USER_HOME:-${HOME}}"
-  SRC_DIR="${BASH_SOURCE%/*}"
-  # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  # Set bash options
-  if [ "$1" == "--debug" ]; then shift 1 && set -xo pipefail && export SCRIPT_OPTS="--debug" && export _DEBUG="on"; fi
-
-  # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  # Main function file
-  if [ -f "$SRC_DIR/functions.bash" ]; then
-    local FUNCTIONS_DIR="$SRC_DIR"
-    . "$FUNCTIONS_DIR/functions.bash"
-  elif [ -f "$HOME/.local/bin/functions.bash" ]; then
-    local FUNCTIONS_DIR="$HOME/.local/bin"
-    . "$FUNCTIONS_DIR/functions.bash"
-  else
-    printf "\t\t\033[0;31m%s \033[0m\n" "Couldn't source the functions file from ${FUNCTIONS_DIR:-$SRC_DIR}"
-    return 1
-  fi
-  # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  # helper functions - See github.com/dfmgr/misc/bin/functions.bash
-  __version() { app_version; }
-  # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  __help() {
-    app_help "4" "Usage: powershell  " \
-      "--options                              -  Show all options" \
-      "-c, --config                           -  Create config file" \
-      "-v, --version                          -  Display version" \
-      "-h, --help                             -  Display help"
-
-    exit $?
-  }
-  # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  __list_options() {
-    printf_custom "$1" "$2: $(echo ${3:-$ARRAY} | __sed 's|:||g;s|'$4'| '$5'|g')" 2>/dev/null
-  }
-  # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  __gen_config() {
-    printf_green "Generating the config file in"
-    printf_green "$POWERSHELL_CONFIG_DIR/$POWERSHELL_CONFIG_FILE"
-    [ -d "$POWERSHELL_CONFIG_DIR" ] || mkdir -p "$POWERSHELL_CONFIG_DIR"
-    [ -d "$POWERSHELL_CONFIG_BACKUP_DIR" ] || mkdir -p "$POWERSHELL_CONFIG_BACKUP_DIR"
-    [ -f "$POWERSHELL_CONFIG_DIR/$POWERSHELL_CONFIG_FILE" ] &&
-      cp -Rf "$POWERSHELL_CONFIG_DIR/$POWERSHELL_CONFIG_FILE" "$POWERSHELL_CONFIG_BACKUP_DIR/$POWERSHELL_CONFIG_FILE.$$"
-    cat <<EOF >"$POWERSHELL_CONFIG_DIR/$POWERSHELL_CONFIG_FILE"
-# Settings for powershell
-POWER_SHELL_BIN_DIR="${POWER_SHELL_BIN_DIR:-$HOME/.local/bin}"
-POWER_SHELL_INSTALL_DIR="${POWER_SHELL_INSTALL_DIR:-$HOME/.local/share/powershell}"
-POWERSHELL_LATEST_URL="${POWERSHELL_LATEST_URL:-https://api.github.com/repos/PowerShell/PowerShell/releases/latest}"
-
-# Notification settings
-POWERSHELL_GOOD_MESSAGE="${POWERSHELL_GOOD_MESSAGE:-Everything Went OK}"
-POWERSHELL_ERROR_MESSAGE="${POWERSHELL_ERROR_MESSAGE:-Well something seems to have gone wrong}"
-POWERSHELL_NOTIFY_ENABLED="${POWERSHELL_NOTIFY_ENABLED:-yes}"
-POWERSHELL_NOTIFY_CLIENT_NAME="${NOTIFY_CLIENT_NAME:-$PROG}"
-POWERSHELL_NOTIFY_CLIENT_ICON="${NOTIFY_CLIENT_ICON:-$POWERSHELL_NOTIFY_CLIENT_ICON}"
-
-# Colorization settings
-POWERSHELL_OUTPUT_COLOR="${POWERSHELL_OUTPUT_COLOR:-5}"
-POWERSHELL_OUTPUT_COLOR_GOOD="${POWERSHELL_OUTPUT_COLOR_GOOD:-2}"
-POWERSHELL_OUTPUT_COLOR_ERROR="${POWERSHELL_OUTPUT_COLOR_ERROR:-1}"
-
-EOF
-    if [ -f "$POWERSHELL_CONFIG_DIR/$POWERSHELL_CONFIG_FILE" ]; then
-      [ "$INIT_CONFIG" = "TRUE" ] || printf_green "Your config file for $APPNAME has been created"
-      true
+# shellcheck disable=SC2317
+# shellcheck disable=SC2120
+# shellcheck disable=SC2155
+# shellcheck disable=SC2199
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+APPNAME="$(basename "$0" 2>/dev/null)"
+VERSION="202305011152-git"
+RUN_USER="$USER"
+SET_UID="$(id -u)"
+SCRIPT_SRC_DIR="$(cd "$(dirname "$0")" && pwd)"
+SETUP_POWERSHELL_CWD="$(realpath "$PWD")"
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# colorization
+if [ "$SHOW_RAW" = "true" ]; then
+  __printf_color() { printf '%b' "$1\n" | tr -d '\t' | sed '/^%b$/d;s,\x1B\[ 0-9;]*[a-zA-Z],,g'; }
+else
+  __printf_color() { { [ -z "$2" ] || DEFAULT_COLOR=$2; } && printf "%b" "$(tput setaf "$DEFAULT_COLOR" 2>/dev/null)" "$1\n" "$(tput sgr0 2>/dev/null)"; }
+fi
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# check for command
+__cmd_exists() { which $1 >/dev/null 2>&1 || return 1; }
+__function_exists() { builtin type $1 >/dev/null 2>&1 || return 1; }
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# custom functions
+get_releases() { curl -q -LSsf -H "Accept: application/vnd.github+json" "$SETUP_POWERSHELL_LATEST_URL" 2>/dev/null | jq -r '.assets[].browser_download_url' 2>/dev/null | grep -v 'fxdependent' | grep "$os-$arch" | grep -E '.tar.gz|.zip' | head -n1 | grep '^' || return 1; }
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+extract() {
+  args="$*"
+  builtin cd "$SETUP_POWERSHELL_TEMP_DIR" || exit 1
+  for arg in $args; do
+    if [ -f "$arg" ]; then
+      case "$arg" in
+      *.tar.bz2) tar xjf "$arg" ;;
+      *.tar.gz) tar xzf "$arg" ;;
+      *.tar.xz) tar xzf "$arg" ;;
+      *.bz2) bunzip2 "$arg" ;;
+      *.gz) gunzip "$arg" ;;
+      *.tar) tar xf "$arg" ;;
+      *.tbz2) tar xjf "$arg" ;;
+      *.tgz) tar xzf "$arg" ;;
+      *.zip) unzip "$arg" ;;
+      *.Z) uncompress "$arg" ;;
+      *.rar) rar x "$arg" ;;    # 'rar' must to be installed
+      *.jar) jar -xvf "$arg" ;; # 'jdk' must to be installed
+      *) shift ;;
+      esac
     else
-      printf_red "Failed to create the config file"
-      false
+      echo "'$arg' is not a valid file"
     fi
-  }
-  # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  # Additional functions
-  get_releases() {
-    curl -q -LSsf -H "Accept: application/vnd.github+json" "$POWERSHELL_LATEST_URL" 2>/dev/null |
-      jq -r '.assets[].browser_download_url' 2>/dev/null |
-      grep -v 'fxdependent' |
-      grep "$os-$arch" |
-      grep -E '.tar.gz|.zip' |
-      head -n1 | grep '^' || echo ''
-  }
-  # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  extract() {
-    local -a args="$*"
-    builtin cd "$POWERSHELL_TEMP_DIR" || exit 1
-    for arg in $args; do
-      if [ -f "$arg" ]; then
-        case "$arg" in
-        *.tar.bz2) tar xjf "$arg" ;;
-        *.tar.gz) tar xzf "$arg" ;;
-        *.tar.xz) tar xzf "$arg" ;;
-        *.bz2) bunzip2 "$arg" ;;
-        *.gz) gunzip "$arg" ;;
-        *.tar) tar xf "$arg" ;;
-        *.tbz2) tar xjf "$arg" ;;
-        *.tgz) tar xzf "$arg" ;;
-        *.zip) unzip "$arg" ;;
-        *.Z) uncompress "$arg" ;;
-        *.rar) rar x "$arg" ;;    # 'rar' must to be installed
-        *.jar) jar -xvf "$arg" ;; # 'jdk' must to be installed
-        *) shift ;;
-        esac
-      else
-        echo "'$arg' is not a valid file"
-      fi
-    done
-    return $?
-  }
-  # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  # Defaults
-  local exitCode=
-  # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  # Application Folders
-  local POWERSHELL_LOG_DIR="${POWERSHELL_LOG_DIR:-$HOME/.local/log/powershell}"
-  local POWERSHELL_CACHE_DIR="${POWERSHELL_CACHE_DIR:-$HOME/.cache/powershell}"
-  local POWERSHELL_CONFIG_DIR="${POWERSHELL_CONFIG_DIR:-$HOME/.config/misc/settings/powershell}"
-  local POWERSHELL_OPTIONS_DIR="${POWERSHELL_OPTIONS_DIR:-$HOME/.local/share/misc/powershell/options}"
-  local POWERSHELL_CONFIG_BACKUP_DIR="${POWERSHELL_CONFIG_BACKUP_DIR:-$HOME/.local/share/misc/powershell/backups}"
-  local POWERSHELL_TEMP_DIR="${POWERSHELL_TEMP_DIR:-$HOME/.local/tmp/system_scripts/powershell}"
-  local POWERSHELL_CONFIG_FILE="${POWERSHELL_CONFIG_FILE:-settings.conf}"
-  local POWERSHELL_GOOD_MESSAGE="${POWERSHELL_GOOD_MESSAGE:-Everything Went OK}"
-  local POWERSHELL_ERROR_MESSAGE="${POWERSHELL_ERROR_MESSAGE:-Well something seems to have gone wrong}"
-  local POWERSHELL_NOTIFY_ENABLED="${POWERSHELL_NOTIFY_ENABLED:-yes}"
-  local POWERSHELL_NOTIFY_CLIENT_NAME="${NOTIFY_CLIENT_NAME:-$APPNAME}"
-  local POWERSHELL_NOTIFY_CLIENT_ICON="${NOTIFY_CLIENT_ICON:-$POWERSHELL_NOTIFY_CLIENT_ICON}"
-  local POWERSHELL_OUTPUT_COLOR="${POWERSHELL_OUTPUT_COLOR:-5}"
-  local POWERSHELL_OUTPUT_COLOR_GOOD="${POWERSHELL_OUTPUT_COLOR_GOOD:-2}"
-  local POWERSHELL_OUTPUT_COLOR_ERROR="${POWERSHELL_OUTPUT_COLOR_ERROR:-1}"
-  # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  # Enviroment overrides
-  local POWERSHELL_LATEST_URL="${POWERSHELL_LATEST_URL:-https://api.github.com/repos/PowerShell/PowerShell/releases/latest}"
-  local POWER_SHELL_INSTALL_DIR="${POWER_SHELL_INSTALL_DIR:-$HOME/.local/share/powershell}"
-  local POWER_SHELL_BIN_DIR="${POWER_SHELL_BIN_DIR:-$HOME/.local/bin}"
-  # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  # Generate config files
-  [ -f "$POWERSHELL_CONFIG_DIR/$POWERSHELL_CONFIG_FILE" ] || [[ "$*" = *config ]] || INIT_CONFIG="${INIT_CONFIG:-TRUE}" __gen_config ${SETARGS:-$@}
-  # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  # Import config
-  [ -f "$POWERSHELL_CONFIG_DIR/$POWERSHELL_CONFIG_FILE" ] && . "$POWERSHELL_CONFIG_DIR/$POWERSHELL_CONFIG_FILE"
-  # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  # Ensure Directories exist
-  [ -d "$POWERSHELL_LOG_DIR" ] || mkdir -p "$POWERSHELL_LOG_DIR" &>/dev/null
-  [ -d "$POWERSHELL_TEMP_DIR" ] || mkdir -p "$POWERSHELL_TEMP_DIR" &>/dev/null
-  [ -d "$POWERSHELL_CACHE_DIR" ] || mkdir -p "$POWERSHELL_CACHE_DIR" &>/dev/null
-  local POWERSHELL_TEMP_FILE="${POWERSHELL_TEMP_FILE:-$(mktemp $POWERSHELL_TEMP_DIR/XXXXXX 2>/dev/null)}"
-  # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  # Setup trap to remove temp file
-  trap 'exitCode=${exitCode:-$?};[ -n "$POWERSHELL_TEMP_FILE" ] && [ -f "$POWERSHELL_TEMP_FILE" ] && rm -Rf "$POWERSHELL_TEMP_FILE" &>/dev/null' EXIT
-  # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  # Setup notification function
-  if [ "$POWERSHELL_NOTIFY_ENABLED" = "yes" ]; then
-    __notifications() {
-      export NOTIFY_GOOD_MESSAGE="${POWERSHELL_GOOD_MESSAGE}"
-      export NOTIFY_ERROR_MESSAGE="${POWERSHELL_ERROR_MESSAGE}"
-      export NOTIFY_CLIENT_NAME="${POWERSHELL_NOTIFY_CLIENT_NAME}"
-      export NOTIFY_CLIENT_ICON="${POWERSHELL_NOTIFY_CLIENT_ICON}"
-      notifications "$@" && exitCode=0 || exitCode=1
-      unset NOTIFY_CLIENT_NAME NOTIFY_CLIENT_ICON NOTIFY_GOOD_MESSAGE NOTIFY_ERROR_MESSAGE
-      return ${exitCode:-$?}
-    }
-  else
-    __notifications() { false; }
-  fi
-  # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  # Show warn message if variables are missing
-
-  # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  # Argument/Option settings
-  local SETARGS="$*"
-  local SHORTOPTS=""
-  local LONGOPTS="options,config,version,help,dir:"
-  local ARRAY=""
-  # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  # Setup application options
-  local setopts=$(getopt -o "$SHORTOPTS" --long "$LONGOPTS" -n "$PROG" -- "$@" 2>/dev/null)
-  eval set -- "${setopts[@]}" 2>/dev/null
-  while :; do
-    case "$1" in
-    --options)
-      shift 1
-      [ -n "$1" ] || printf_blue "Current options for ${PROG:-$APPNAME}"
-      [ -z "$SHORTOPTS" ] || __list_options "5" "Short Options" "-$SHORTOPTS" ',' '-'
-      [ -z "$LONGOPTS" ] || __list_options "5" "Long Options" "--$LONGOPTS" ',' '--'
-      [ -z "$ARRAY" ] || __list_options "5" "Base Options" "$ARRAY" ',' ''
-      exit $?
-      ;;
-    --version)
-      shift 1
-      __version
-      exit $?
-      ;;
-    --help)
-      shift 1
-      __help
-      exit $?
-      ;;
-    --config)
-      shift 1
-      __gen_config
-      exit $?
-      ;;
-    --dir)
-      POWERSHELL_CWD="$2"
-      shift 2
-      ;;
-    --)
-      shift 1
-      break
-      ;;
-    esac
   done
-  #set -- "$SETARGS"
-  # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  # Check for required applications/Network check
-  cmd_exists --error bash || exit 1 # exit 1 if not found
-  #am_i_online --error || exit 1     # exit 1 if no internet
-  # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  # APP Variables overrides
-  os="$(uname -s | tr '[:upper:]' '[:lower:]')"
-  arch="$(uname -m | tr '[:upper:]' '[:lower:]')"
-  if [[ "$arch" = *86_64* ]] || [ "$arch" = amd64 ]; then
-    arch="x64"
-  elif [ "$arch" = aarch64 ]; then
-    arch="arm64"
-  elif [[ "$arch" = arm* ]]; then
-    arch="arm32"
-  elif [[ "$OSTYPE" = i?86 ]]; then
-    arch="x86"
-  else
-    exit 1
+  return $?
+}
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# Define variables
+DEFAULT_COLOR="254"
+SETUP_POWERSHELL_EXIT_STATUS=0
+SETUP_POWERSHELL_TEMP_DIR="$HOME/.local/tmp/system_scripts/powershell"
+[ -n "$SETUP_POWERSHELL_BIN_DIR" ] || SETUP_POWERSHELL_BIN_DIR="$HOME/.local/bin"
+[ -n "$SETUP_POWERSHELL_INSTALL_DIR" ] || SETUP_POWERSHELL_INSTALL_DIR="$HOME/.local/share/powershell"
+[ -n "$SETUP_POWERSHELL_LATEST_URL" ] || SETUP_POWERSHELL_LATEST_URL="https://api.github.com/repos/PowerShell/PowerShell/releases/latest"
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+[ -d "$SETUP_POWERSHELL_TEMP_DIR" ] || mkdir -p "$SETUP_POWERSHELL_TEMP_DIR"
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+os="$(uname -s | tr '[:upper:]' '[:lower:]')"
+arch="$(uname -m | tr '[:upper:]' '[:lower:]')"
+if echo "$arch" | grep -q '.*86_64.*' || [ "$arch" = "amd64" ]; then
+  arch="x64"
+  posh_arch="amd64"
+elif echo "$arch" | grep -q '.*aarch64.*' || [ "$arch" = "arm64" ]; then
+  arch="arm64"
+  posh_arch="arm64"
+elif echo "$arch" | grep -q '.*arm.*'; then
+  arch="arm32"
+  posh_arch="arm"
+elif echo "$arch" | grep -q 'i?86'; then
+  arch="x86"
+  posh_arch=""
+else
+  exit 1
+fi
+if [ "$os" = "linux" ]; then
+  os=linux
+elif [ "$os" = "darwin" ]; then
+  os=osx
+elif [ "$os" = "msys" ] || [ "$os" = "windowsnt" ] || [ "$os" = "cygwin" ]; then
+  os=win
+else
+  exit 1
+fi
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# Main application
+SETUP_POWERSHELL_LATEST_URL="$(get_releases)"
+SETUP_POWERSHELL_LATEST_URL_FILE="$(basename "$SETUP_POWERSHELL_LATEST_URL")"
+SETUP_POWERSHELL_LATEST_RELEASE_FILE="$SETUP_POWERSHELL_TEMP_DIR/$(basename "$SETUP_POWERSHELL_LATEST_URL")"
+[ -e "$SETUP_POWERSHELL_INSTALL_DIR/pwsh" ] && rm -Rf "$SETUP_POWERSHELL_BIN_DIR/pwsh"
+[ -e "$SETUP_POWERSHELL_INSTALL_DIR/powershell" ] && rm -Rf "$SETUP_POWERSHELL_BIN_DIR/powershell"
+[ -e "$SETUP_POWERSHELL_LATEST_RELEASE_FILE" ] && rm -Rf "$SETUP_POWERSHELL_LATEST_RELEASE_FILE"
+if [ -n "$SETUP_POWERSHELL_LATEST_URL" ]; then
+  __printf_color "Downloading $SETUP_POWERSHELL_LATEST_URL_FILE" 6
+  curl -q -LSsf -o "$SETUP_POWERSHELL_LATEST_RELEASE_FILE" "$SETUP_POWERSHELL_LATEST_URL" 2>/dev/null
+  extract "$SETUP_POWERSHELL_LATEST_RELEASE_FILE"
+else
+  __printf_color "Failed to download from: $SETUP_POWERSHELL_LATEST_URL" 1 >&2
+  exit 1
+fi
+if [ -d "$SETUP_POWERSHELL_TEMP_DIR" ] && [ -f "$SETUP_POWERSHELL_TEMP_DIR/pwsh" ]; then
+  rsync -avhP "$SETUP_POWERSHELL_TEMP_DIR/" "$SETUP_POWERSHELL_INSTALL_DIR/" --delete >/dev/null 2>&1
+  [ -L "$SETUP_POWERSHELL_BIN_DIR/pwsh" ] && unlink "$SETUP_POWERSHELL_BIN_DIR/pwsh"
+  [ -L "$SETUP_POWERSHELL_BIN_DIR/powershell" ] && unlink "$SETUP_POWERSHELL_BIN_DIR/powershell"
+  printf '#!/usr/bin/env sh\n\n%s\n' "exec $SETUP_POWERSHELL_INSTALL_DIR/pwsh \"\$@\"" >"$SETUP_POWERSHELL_BIN_DIR/pwsh"
+  printf '#!/usr/bin/env sh\n\n%s\n' "exec $SETUP_POWERSHELL_INSTALL_DIR/pwsh \"\$@\"" >"$SETUP_POWERSHELL_BIN_DIR/powershell"
+  chmod -Rf 755 "$SETUP_POWERSHELL_BIN_DIR/pwsh" "$SETUP_POWERSHELL_BIN_DIR/powershell"
+  if [ -d "$SETUP_POWERSHELL_INSTALL_DIR" ] && [ -x "$SETUP_POWERSHELL_BIN_DIR/pwsh" ]; then
+    rm -Rf" $SETUP_POWERSHELL_TEMP_DIR" "$SETUP_POWERSHELL_LATEST_RELEASE_FILE" >/dev/null 2>&1
   fi
-  if [ "$os" = linux ]; then
-    os=linux
-  elif [ "$os" = darwin ]; then
-    os=osx
-  elif [ "$os" = msys ] || [ "$os" = windowsnt ]; then
-    os=win
-  else
-    exit 1
-  fi
-  # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  POWERSHELL_LATEST_URL="$(get_releases)"
-  POWERSHELL_LATEST_URL_FILE="$(basename "$POWERSHELL_LATEST_URL")"
-  POWERSHELL_LATEST_RELEASE_FILE="$TMP/$(basename "$POWERSHELL_LATEST_URL")"
-  # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  # Actions based on env
-  [ -e "$POWER_SHELL_INSTALL_DIR/pwsh" ] && rm -Rf "$POWER_SHELL_BIN_DIR/pwsh"
-  [ -e "$POWER_SHELL_INSTALL_DIR/powershell" ] && rm -Rf "$POWER_SHELL_BIN_DIR/powershell"
-  [ -e "$POWERSHELL_LATEST_RELEASE_FILE" ] && rm -Rf "$POWERSHELL_LATEST_RELEASE_FILE"
-  # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  # begin main app
-  if [ -n "$POWERSHELL_LATEST_URL" ]; then
-    printf_cyan "Downloading $POWERSHELL_LATEST_URL_FILE"
-    curl -q -LSsf -o "$POWERSHELL_LATEST_RELEASE_FILE" "$POWERSHELL_LATEST_URL" 2>/dev/null
-  else
-    printf_red "Failed to download from:"
-    printf_exit "$POWERSHELL_LATEST_URL"
-  fi
-
-  # extract archive
-  extract "$POWERSHELL_LATEST_RELEASE_FILE"
-
-  # install
-  if [ -d "$POWERSHELL_TEMP_DIR" ] && [ -f "$POWERSHELL_TEMP_DIR/pwsh" ]; then
-    rsync -avhP "$POWERSHELL_TEMP_DIR/" "$POWER_SHELL_INSTALL_DIR/" --delete &>/dev/null
-    [ -L "$POWER_SHELL_BIN_DIR/pwsh" ] && unlink "$POWER_SHELL_BIN_DIR/pwsh"
-    [ -L "$POWER_SHELL_BIN_DIR/powershell" ] && unlink "$POWER_SHELL_BIN_DIR/powershell"
-    printf '#!/usr/bin/env sh\n\n%s\n' "exec $POWER_SHELL_INSTALL_DIR/pwsh" >"$POWER_SHELL_BIN_DIR/pwsh"
-    printf '#!/usr/bin/env sh\n\n%s\n' "exec $POWER_SHELL_INSTALL_DIR/pwsh" >"$POWER_SHELL_BIN_DIR/powershell"
-    chmod -Rf 755 "$POWER_SHELL_BIN_DIR/pwsh" "$POWER_SHELL_BIN_DIR/powershell"
-    if [ -d "$POWER_SHELL_INSTALL_DIR" ] && [ -f "$POWER_SHELL_BIN_DIR/pwsh" ]; then
-      printf_green "Successfully saved powershell to: $POWER_SHELL_INSTALL_DIR"
-      printf_cyan "Cleaning up: $POWERSHELL_TEMP_DIR $POWERSHELL_LATEST_RELEASE_FILE"
-      rm -Rf" $POWERSHELL_TEMP_DIR" "$POWERSHELL_LATEST_RELEASE_FILE" &>/dev/null
-    fi
-    if [ -f "$POWER_SHELL_BIN_DIR/pwsh" ]; then
-      if [ "$os" = win ]; then
-        command -v winget &>/dev/null && winget install JanDeDobbeleer.OhMyPosh -s winget
-      elif [ "$os" = mac ]; then
-        command -v brew &>/dev/null && brew install jandedobbeleer/oh-my-posh/oh-my-posh
-      elif [ "$os" = linux ]; then
-        install_posh="$(curl -q -LSsf -H "Accept: application/vnd.github+json" https://api.github.com/repos/JanDeDobbeleer/oh-my-posh/releases/latest | jq -r '.assets[].browser_download_url' | grep "$os-$arch$" || echo'')"
+  if [ -f "$SETUP_POWERSHELL_BIN_DIR/pwsh" ]; then
+    __printf_color "Successfully saved powershell to: $SETUP_POWERSHELL_INSTALL_DIR" 2
+    if [ "$os" = "win" ]; then
+      command -v winget >/dev/null 2>&1 && winget install JanDeDobbeleer.OhMyPosh -s winget
+    elif [ "$os" = "mac" ]; then
+      command -v brew >/dev/null 2>&1 && brew install jandedobbeleer/oh-my-posh/oh-my-posh
+    elif [ "$os" = "linux" ]; then
+      if [ -n "$posh_arch" ]; then
+        install_posh="$(curl -q -LSsf -H "Accept: application/vnd.github+json" https://api.github.com/repos/JanDeDobbeleer/oh-my-posh/releases/latest | jq -r '.assets[].browser_download_url' | grep "$os" | grep "$posh_arch$" || echo'')"
         if [ -n "$install_posh" ]; then
-          printf_cyan "Installing oh-my-posh"
+          __printf_color "Installing oh-my-posh" 5
           curl -q -LSsf "$install_posh" -o "$HOME/.local/bin/oh-my-posh"
           if [ -f "$HOME/.local/bin/oh-my-posh" ]; then
             chmod +x "$HOME/.local/bin/oh-my-posh"
-            printf_green "Successfully saved oh-my-posh to: ~/.local/bin/oh-my-posh"
+            __printf_color "Successfully saved oh-my-posh to: ~/.local/bin/oh-my-posh" 2
           fi
+        else
+          __printf_color "Can not find oh-my-posh $install_posh"
         fi
-        # fi
+      else
+        __printf_color "oh-my-posh is not support on $arch" 1 >&2
       fi
-      printf_cyan "Initializing powershell modules"
-      [ -f "$HOME/.config/powershell/Microsoft.PowerShell_profile.ps1" ] && mv -f "$HOME/.config/powershell/Microsoft.PowerShell_profile.ps1" "$HOME/.config/powershell/Microsoft.PowerShell_profile.bak"
-      [ -f "$HOME/.config/powershell/init.ps1" ] && $POWER_SHELL_INSTALL_DIR/pwsh -Command "$HOME/.config/powershell/init.ps1" 2>/dev/null
-      [ -f "$HOME/.config/powershell/Microsoft.PowerShell_profile.bak" ] && mv -f "$HOME/.config/powershell/Microsoft.PowerShell_profile.bak" "$HOME/.config/powershell/Microsoft.PowerShell_profile.ps1"
     fi
-    exitCode=0
-  else
-    printf_red "Well something went wrong"
-    exitCode=1
+    __printf_color "Initializing powershell modules" 3
+    if [ -f "$HOME/.config/powershell/Microsoft.SETUP_POWERSHELL_profile.ps1" ]; then
+      mv -f "$HOME/.config/powershell/Microsoft.SETUP_POWERSHELL_profile.ps1" "$HOME/.config/powershell/Microsoft.SETUP_POWERSHELL_profile.bak"
+    fi
+    if [ -f "$HOME/.config/powershell/init.ps1" ]; then
+      eval "$SETUP_POWERSHELL_INSTALL_DIR/pwsh -Command $HOME/.config/powershell/init.ps1" >/dev/null
+    fi
+    if [ -f "$HOME/.config/powershell/Microsoft.SETUP_POWERSHELL_profile.bak" ]; then
+      mv -f "$HOME/.config/powershell/Microsoft.SETUP_POWERSHELL_profile.bak" "$HOME/.config/powershell/Microsoft.SETUP_POWERSHELL_profile.ps1"
+    fi
   fi
-  # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  # lets exit with code
-  return ${exitCode:-$?}
-}
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# execute function
-powershell_main "$@"
+  if __cmd_exists pwsh; then
+    version="$(powershell --version | sed 's|.* ||g')"
+    for tmp_dir in $SETUP_POWERSHELL_TEMP_DIR $SETUP_POWERSHELL_LATEST_RELEASE_FILE; do
+      __printf_color "Cleaning up: $tmp_dir" 6
+    done
+    __printf_color "Powershell $version has been installed" 200
+    SETUP_POWERSHELL_EXIT_STATUS=0
+  else
+    SETUP_POWERSHELL_EXIT_STATUS=1
+  fi
+else
+  __printf_color "Well something went wrong" 1 >&2
+  SETUP_POWERSHELL_EXIT_STATUS=1
+fi
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # End application
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # lets exit with code
-exit ${exitCode:-$?}
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+exit $SETUP_POWERSHELL_EXIT_STATUS
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# ex: ts=2 sw=2 et filetype=sh
