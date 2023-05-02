@@ -76,8 +76,10 @@ DEFAULT_COLOR="254"
 SETUP_POWERSHELL_EXIT_STATUS=0
 SETUP_POWERSHELL_TEMP_DIR="$HOME/.local/tmp/system_scripts/powershell"
 [ -n "$SETUP_POWERSHELL_BIN_DIR" ] || SETUP_POWERSHELL_BIN_DIR="$HOME/.local/bin"
-[ -n "$SETUP_POWERSHELL_INSTALL_DIR" ] || SETUP_POWERSHELL_INSTALL_DIR="$HOME/.local/share/powershell"
+[ -n "$SETUP_POWERSHELL_INSTALL_DIR" ] || SETUP_POWERSHELL_INSTALL_DIR="$HOME/.local/share/powershell/7"
 [ -n "$SETUP_POWERSHELL_LATEST_URL" ] || SETUP_POWERSHELL_LATEST_URL="https://api.github.com/repos/PowerShell/PowerShell/releases/latest"
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+[ "$USER" = "root" ] && SETUP_POWERSHELL_INSTALL_DIR="/usr/local/share/microsoft/powershell/7" && SETUP_POWERSHELL_BIN_DIR="/usr/local/bin"
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 [ -d "$SETUP_POWERSHELL_TEMP_DIR" ] || mkdir -p "$SETUP_POWERSHELL_TEMP_DIR"
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
