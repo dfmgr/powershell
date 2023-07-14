@@ -189,7 +189,22 @@ __run_post_message() {
 # Define pre-install scripts
 __run_pre_install() {
   local getRunStatus=0
-
+  local arch="" release=""
+  local oh_my_posh_api="https://api.github.com/repos/JanDeDobbeleer/oh-my-posh/releases/latest"
+  if __cmd_exists jq; then
+    if ! __cmd_exists oh-my-posh; then
+      if [ "$(uname -m)" = "x86_64" ]; then
+        arch="amd64"
+      elif [ "$(uname -m)" = "aarch64" ] || [ "$(uname -m)" = "arm64" ]; then
+        arch="arm64"
+      fi
+      release="$(curl -q -LSsf "$oh_my_posh_api" | jq '.[]' | jq -r '.[]|.browser_download_url' 2>/dev/null | grep 'linux' | grep -Ev '.asc|.sha256|.xz|.sig' | grep "$arch" || false)"
+      if [ -n "$release" ]; then
+        curl -q -LSsf "$release" -o "$HOME/.local/bin/oh-my-posh"
+        [ -f "$HOME/.local/bin/oh-my-posh" ] && chmod -f 755 "$HOME/.local/bin/oh-my-posh"
+      fi
+    fi
+  fi
   return $getRunStatus
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -203,7 +218,9 @@ __run_prepost_install() {
 # run after primary post install function
 __run_post_install() {
   local getRunStatus=0
-
+  if __cmd_exists pwsh && [ -f "$HOME/.config/powershell/init.ps1" ]; then
+    pwsh -Command "$HOME/.config/powershell/init.ps1" >/dev/null
+  fi
   return $getRunStatus
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
