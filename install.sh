@@ -191,6 +191,9 @@ __run_pre_install() {
   local getRunStatus=0
   local arch="" release=""
   local oh_my_posh_api="https://api.github.com/repos/JanDeDobbeleer/oh-my-posh/releases/latest"
+  if ! __cmd_exists pwsh || ! __cmd_exists powershell; then
+    [ -f "$INSTDIR/bin/setup_powershell" ] && bash "$INSTDIR/bin/setup_powershell"
+  fi
   if __cmd_exists jq; then
     if ! __cmd_exists oh-my-posh; then
       if [ "$(uname -m)" = "x86_64" ]; then
