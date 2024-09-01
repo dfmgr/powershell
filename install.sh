@@ -214,6 +214,7 @@ __run_pre_install() {
 # run before primary post install function
 __run_prepost_install() {
   local getRunStatus=0
+  [ -f "$HOME/.local/bin/pwsh" ] && chmod -Rf 777 "$HOME/.local/bin/pwsh"
 
   return $getRunStatus
 }
