@@ -189,24 +189,8 @@ __run_post_message() {
 # Define pre-install scripts
 __run_pre_install() {
   local getRunStatus=0
-  local arch="" release=""
-  local oh_my_posh_api="https://api.github.com/repos/JanDeDobbeleer/oh-my-posh/releases/latest"
   if ! __cmd_exists pwsh || ! __cmd_exists powershell; then
-    [ -f "$INSTDIR/bin/setup_powershell" ] && bash "$INSTDIR/bin/setup_powershell"
-  fi
-  if __cmd_exists jq; then
-    if ! __cmd_exists oh-my-posh; then
-      if [ "$(uname -m)" = "x86_64" ]; then
-        arch="amd64"
-      elif [ "$(uname -m)" = "aarch64" ] || [ "$(uname -m)" = "arm64" ]; then
-        arch="arm64"
-      fi
-      release="$(curl -q -LSsf "$oh_my_posh_api" | jq '.[]' | jq -r '.[]|.browser_download_url' 2>/dev/null | grep 'linux' | grep -Ev '.asc|.sha256|.xz|.sig' | grep "$arch" || false)"
-      if [ -n "$release" ]; then
-        curl -q -LSsf "$release" -o "$HOME/.local/bin/oh-my-posh"
-        [ -f "$HOME/.local/bin/oh-my-posh" ] && chmod -f 755 "$HOME/.local/bin/oh-my-posh"
-      fi
-    fi
+    [ -n "$(type -P setupmgr)" ] && setupmgr powershell &>/dev/null
   fi
   return $getRunStatus
 }
@@ -342,6 +326,7 @@ fi
 unset instCode
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Install Plugins
+exitC=0
 exitCodeP=0
 if __am_i_online; then
   if [ "$PLUGIN_REPOS" != "" ]; then
@@ -351,10 +336,12 @@ if __am_i_online; then
       plugin_dir="$PLUGIN_DIR/$plugin_name"
       if [ -d "$plugin_dir/.git" ]; then
         execute "git_update $plugin_dir" "Updating plugin $plugin_name"
-        [ $? -ne 0 ] && exitCodeP=$(($? + exitCodeP)) && printf_red "Failed to update $plugin_name"
+        exitC=$?
+        [ $exitC -ne 0 ] && exitCodeP=$((exitC + exitCodeP)) && printf_red "Failed to update $plugin_name"
       else
         execute "git_clone $plugin $plugin_dir" "Installing plugin $plugin_name"
-        [ $? -ne 0 ] && exitCodeP=$(($? + exitCodeP)) && printf_red "Failed to install $plugin_name"
+        exitC=$?
+        [ $exitC -ne 0 ] && exitCodeP=$((exitC + exitCodeP)) && printf_red "Failed to install $plugin_name"
       fi
     done
   fi
@@ -363,7 +350,7 @@ if __am_i_online; then
   # exit on fail
   __failexitcode $exitCodeP "Installation of plugin failed"
 fi
-unset exitCodeP
+unset exitCodeP exitC
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # run post install scripts
 run_postinst() {
